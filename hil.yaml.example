@@ -1,0 +1,48 @@
+# Example configuration for HIL Debug Workbench.
+# Copy this file to hil.yaml in your project root and edit as needed.
+version: 1
+
+# Board definitions.
+boards:
+  - name: my-esp32
+    # Chip family: esp32 | esp32s2 | esp32s3 | rp2040
+    target: esp32
+    # Leave unset to detect the USB port.
+    # port: /dev/ttyUSB0
+    baud_rate: 115200
+    # PlatformIO environment name (from platformio.ini [env:NAME])
+    pio_env: esp32dev
+    # Absolute or relative path to the PlatformIO project directory
+    pio_project_dir: /path/to/your/firmware
+    # Path to the compiled ELF file for addr2line backtrace resolution.
+    # Relative paths are resolved from pio_project_dir.
+    # Typical PlatformIO output: .pio/build/<env>/firmware.elf
+    firmware_elf: .pio/build/esp32dev/firmware.elf
+    # Seconds without a crash before declaring the firmware "stable"
+    stability_window: 30
+    # Maximum flash, analyze, and fix cycles before giving up
+    max_heal_cycles: 10
+
+  - name: my-rp2040
+    target: rp2040
+    # port: /dev/ttyACM0
+    baud_rate: 115200
+    pio_env: pico
+    pio_project_dir: /path/to/pico-firmware
+    firmware_elf: .pio/build/pico/firmware.elf
+    stability_window: 30
+    max_heal_cycles: 8
+
+# Dashboard.
+# Local web dashboard port (http://localhost:3000)
+dashboard_port: 3000
+
+# Model settings for crash analysis and repair.
+# Anthropic model used for crash analysis and code fixes.
+# Recommended: claude-3-5-sonnet-20241022 or claude-3-7-sonnet-20250219
+ai_model: claude-3-5-sonnet-20241022
+ai_max_tokens: 4096
+
+# Optional session log file.
+# Append all serial output and crash reports to this file.
+# log_file: /tmp/hil-session.log

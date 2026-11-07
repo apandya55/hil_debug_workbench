@@ -1,0 +1,16 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include hil.yaml.example
+include pytest.ini
+include pyproject.toml
+
+recursive-include dashboard/static *.html *.js *.css
+recursive-include docs *.md *.yaml
+recursive-include tests *.py
+
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
