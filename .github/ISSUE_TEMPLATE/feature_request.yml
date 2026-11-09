@@ -1,0 +1,30 @@
+name: Feature Request
+description: Propose a new capability, board target, or workflow integration
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for a new feature or board support in HIL Debug Workbench? Let us know below.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: Is your feature request related to a specific problem or limitation?
+      placeholder: Currently, testing STM32 or nRF52 targets requires manual...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe what you'd like to see added or changed
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any workarounds or alternative approaches you evaluated
+    validations:
+      required: false
