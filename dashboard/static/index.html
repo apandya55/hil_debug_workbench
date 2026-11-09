@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Debug Workbench</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base:     #0D1117;
+  --bg-surface:  #161B22;
+  --bg-raised:   #1C2128;
+  --bg-overlay:  #21262D;
+  --border:      rgba(255,255,255,0.08);
+  --border-hi:   rgba(255,255,255,0.14);
+  --text-pri:    #E6EDF3;
+  --text-sec:    #8B949E;
+  --text-dim:    #484F58;
+  --blue:        #388BFD;
+  --green:       #3FB950;
+  --red:         #F85149;
+  --yellow:      #D29922;
+  --orange:      #E3B341;
+  --purple:      #BC8CFF;
+  --r-sm:  6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg-base);
+  color: var(--text-pri);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-rows: 48px 1fr 220px;
+  grid-template-columns: 220px 1fr 240px;
+  height: 100vh;
+  gap: 1px;
+  background: var(--border);
+}
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel {
+  background: var(--bg-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.panel-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body { flex: 1; overflow: auto; padding: 10px; }
+
+/* Top bar */
+.logo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-pri);
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.logo svg { color: var(--blue); }
+.board-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-sec);
+}
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background .3s;
+}
+.dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.flashing  { background: var(--yellow); animation: pulse .8s ease infinite; }
+.dot.error     { background: var(--red); }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.state-badge {
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-left: 4px;
+}
+.state-idle      { background: rgba(139,148,158,.12); color: var(--text-sec); }
+.state-flashing  { background: rgba(210,153,34,.15);  color: var(--orange); }
+.state-monitoring{ background: rgba(56,139,253,.15);  color: var(--blue); }
+.state-analyzing { background: rgba(188,140,255,.15); color: var(--purple); }
+.state-ai_fixing { background: rgba(188,140,255,.15); color: var(--purple); }
+.state-applying  { background: rgba(56,139,253,.15);  color: var(--blue); }
+.state-stable    { background: rgba(63,185,80,.15);   color: var(--green); }
+.state-failed    { background: rgba(248,81,73,.15);   color: var(--red); }
+
+.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* Buttons */
+.btn {
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-pri);
+  transition: background .15s, border-color .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:hover { background: var(--bg-overlay); border-color: var(--border-hi); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--blue); color: #fff; border-color: transparent; }
+.btn.primary:hover { background: #4D9FFD; }
+.btn.danger  { background: transparent; color: var(--red); border-color: rgba(248,81,73,.4); }
+.btn.danger:hover { background: rgba(248,81,73,.1); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+
+/* Pipeline */
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  margin-bottom: 4px;
+  transition: background .15s;
+  color: var(--text-sec);
+  font-size: 12px;
+}
+.pipeline-step.active { background: var(--bg-raised); color: var(--text-pri); }
+.pipeline-step.done   { color: var(--green); }
+.pipeline-step.error  { color: var(--red); }
+.step-icon { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-overlay);
+             display: flex; align-items: center; justify-content: center; font-size: 9px;
+             flex-shrink: 0; border: 1px solid var(--border); }
+.pipeline-step.active .step-icon { border-color: var(--blue); color: var(--blue); background: rgba(56,139,253,.1); }
+.pipeline-step.done  .step-icon  { border-color: var(--green); color: var(--green); background: rgba(63,185,80,.1); }
+
+/* Serial log */
+.serial-log {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.65;
+  padding: 8px 12px;
+  overflow-y: auto;
+  flex: 1;
+  scroll-behavior: smooth;
+}
+.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-line.crash  { color: var(--red); }
+.log-line.flash  { color: var(--text-dim); }
+.log-line.system { color: var(--blue); font-style: italic; }
+.log-line .ts    { color: var(--text-dim); user-select: none; margin-right: 8px; }
+
+/* System stats */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.stat-label { font-size: 11px; color: var(--text-sec); width: 32px; flex-shrink: 0; }
+.stat-bar-bg {
+  flex: 1; height: 6px; background: var(--bg-overlay);
+  border-radius: 3px; overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%; border-radius: 3px;
+  background: var(--blue);
+  transition: width .4s ease;
+}
+.stat-val { font-size: 11px; color: var(--text-pri); width: 36px; text-align: right;
+            font-variant-numeric: tabular-nums; }
+
+.crash-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+.crash-count-num {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-pri);
+  line-height: 1;
+}
+.crash-count-num.nonzero { color: var(--red); }
+.crash-count-label { font-size: 11px; color: var(--text-sec); }
+
+/* Crash details */
+.crash-panel {
+  grid-column: 1 / -1;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.crash-content {
+  font-family: "SF Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-sec);
+  padding: 10px 14px;
+  overflow-y: auto;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.crash-content .addr { color: var(--purple); }
+.crash-content .func { color: var(--blue); }
+.crash-content .file { color: var(--green); }
+.crash-content .ai-analysis { color: var(--text-pri); border-left: 2px solid var(--blue); padding-left: 8px; }
+
+/* Charts */
+.chart-wrap { position: relative; height: 80px; margin-bottom: 10px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-overlay); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="logo">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1" y="3" width="14" height="10" rx="2"/>
+        <path d="M5 8h6M8 5v6" stroke-linecap="round"/>
+      </svg>
+      HIL Debug Workbench
+    </div>
+    <div class="board-badge">
+      <div class="dot" id="conn-dot"></div>
+      <span id="board-label">No board</span>
+    </div>
+    <div class="state-badge state-idle" id="state-badge">idle</div>
+    <div class="topbar-right">
+      <button class="btn" id="btn-monitor" onclick="startMonitor()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 2" stroke-linecap="round"/>
+        </svg>
+        Monitor
+      </button>
+      <button class="btn" id="btn-flash" onclick="triggerFlash()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M7 1L3 7h4l-2 4 6-6H7L9 1z" stroke-linejoin="round"/>
+        </svg>
+        Flash
+      </button>
+      <button class="btn primary" id="btn-heal" onclick="triggerHeal()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6 1v10M1 6h10" stroke-linecap="round"/>
+        </svg>
+        Flash, Test &amp; Repair
+      </button>
+      <button class="btn danger" id="btn-stop" onclick="stopMonitor()" style="display:none">Stop</button>
+    </div>
+  </header>
+
+  <!-- Left: Pipeline -->
+  <div class="panel">
+    <div class="panel-header">Pipeline</div>
+    <div class="panel-body" id="pipeline-body">
+      <div class="pipeline-step" data-step="detect"   id="step-detect">  <div class="step-icon">1</div> Detect board</div>
+      <div class="pipeline-step" data-step="flash"    id="step-flash">   <div class="step-icon">2</div> Build &amp; flash</div>
+      <div class="pipeline-step" data-step="monitor"  id="step-monitor"> <div class="step-icon">3</div> Monitor serial</div>
+      <div class="pipeline-step" data-step="analyze"  id="step-analyze"> <div class="step-icon">4</div> Analyze crash</div>
+      <div class="pipeline-step" data-step="ai_fixing" id="step-ai">     <div class="step-icon">5</div> Claude suggestion</div>
+      <div class="pipeline-step" data-step="apply"    id="step-apply">   <div class="step-icon">6</div> Apply &amp; reflash</div>
+
+      <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-sec);margin-bottom:6px">Cycle</div>
+        <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums" id="cycle-display">0 / 10</div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">Board</div>
+        <select id="board-select" style="width:100%;background:var(--bg-raised);color:var(--text-pri);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 8px;font-size:12px;outline:none">
+          <option value="">Loading...</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: Serial log (primary focal element) -->
+  <div class="panel" style="position:relative">
+    <div class="panel-header">
+      Serial Output
+      <div style="display:flex;gap:6px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;color:var(--text-sec);text-transform:none;letter-spacing:0">
+          <input type="checkbox" id="autoscroll" checked style="accent-color:var(--blue)"> Auto-scroll
+        </label>
+        <button class="btn" style="padding:2px 8px;font-size:11px" onclick="clearLog()">Clear</button>
+      </div>
+    </div>
+    <div class="serial-log" id="serial-log"></div>
+  </div>
+
+  <!-- Right: System stats -->
+  <div class="panel">
+    <div class="panel-header">System</div>
+    <div class="panel-body">
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-sec);margin-bottom:6px">Heap Free</div>
+        <div class="chart-wrap"><canvas id="chart-heap"></canvas></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">CPU</div>
+        <div class="stat-row">
+          <div class="stat-label">Core 0</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" id="cpu0-bar" style="width:0%"></div></div>
+          <div class="stat-val" id="cpu0-val">—</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Core 1</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" id="cpu1-bar" style="width:0%"></div></div>
+          <div class="stat-val" id="cpu1-val">—</div>
+        </div>
+      </div>
+      <div class="crash-counter">
+        <div class="crash-count-num" id="crash-count">0</div>
+        <div class="crash-count-label">crashes this session</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: Crash analysis -->
+  <div class="crash-panel">
+    <div class="panel-header">
+      Crash Analysis
+      <span id="crash-kind-badge" style="font-size:11px;font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0">No crash yet</span>
+    </div>
+    <div class="crash-content" id="crash-content">Crash details will appear here.</div>
+  </div>
+
+</div><!-- .app -->
+
+<script>
+// Current session state.
+let ws = null;
+let crashCount = 0;
+let cycleMax = 10;
+const LOG_MAX = 2000;
+let logLines = [];
+
+// Live dashboard updates.
+function connectWS() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { appendLog('[Connected to workbench server]', 'system'); fetchStatus(); };
+  ws.onclose = () => { appendLog('[Connection lost. Reconnecting...]', 'system'); setTimeout(connectWS, 2000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'log_history':
+      msg.lines.forEach(l => appendLog(l.text, l.source, false));
+      scrollLog();
+      break;
+    case 'log':
+      appendLog(msg.text, msg.crash ? 'crash' : (msg.source || 'serial'));
+      parseMetrics(msg.text);
+      break;
+    case 'state_change':
+      setUIState(msg.state);
+      break;
+    case 'flash_done':
+      appendLog(msg.ok ? '✓ Flash complete (' + msg.duration?.toFixed(1) + 's)' : '✗ Flash failed: ' + msg.error, 'system');
+      break;
+    case 'crash':
+      crashCount++;
+      document.getElementById('crash-count').textContent = crashCount;
+      document.getElementById('crash-count').classList.toggle('nonzero', crashCount > 0);
+      document.getElementById('crash-kind-badge').textContent = msg.kind || 'unknown';
+      appendLog('CRASH: ' + (msg.kind || 'unknown'), 'crash');
+      break;
+    case 'ai_fix':
+      document.getElementById('crash-content').innerHTML = renderCrashAnalysis(msg);
+      break;
+    case 'fix_applied':
+      appendLog('✎ Fix applied: ' + (msg.files || []).join(', '), 'system');
+      break;
+    case 'stable':
+      appendLog('Firmware stable at cycle ' + msg.cycle, 'system');
+      break;
+    case 'loop_done':
+      setUIState(msg.final_state);
+      break;
+    case 'error':
+      appendLog('⚠ ' + msg.message, 'crash');
+      break;
+  }
+}
+
+// Serial output.
+function appendLog(text, source, doScroll = true) {
+  const el = document.getElementById('serial-log');
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (source || '');
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  line.innerHTML = `<span class="ts">${ts}</span>${escHtml(text)}`;
+  el.appendChild(line);
+  logLines.push(line);
+  if (logLines.length > LOG_MAX) {
+    logLines.shift().remove();
+  }
+  if (doScroll && document.getElementById('autoscroll').checked) scrollLog();
+}
+
+function scrollLog() {
+  const el = document.getElementById('serial-log');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+function clearLog() {
+  const el = document.getElementById('serial-log');
+  if (el) el.innerHTML = '';
+  logLines = [];
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Crash report.
+function renderCrashAnalysis(msg) {
+  let html = '';
+  if (msg.root_cause) {
+    html += `<div class="ai-analysis"><strong>Claude's analysis</strong><br>${escHtml(msg.root_cause)}</div>\n\n`;
+  }
+  if (msg.patches > 0) {
+    html += `<span style="color:var(--green)">${msg.patches} source edit(s) suggested</span>\n`;
+  }
+  return html || 'Claude returned no analysis.';
+}
+
+// Reflect the current operation in the pipeline and controls.
+const STATE_STEP_MAP = {
+  flashing:   ['flash'],
+  monitoring: ['flash', 'monitor'],
+  analyzing:  ['flash', 'monitor', 'analyze'],
+  ai_fixing:  ['flash', 'monitor', 'analyze', 'ai_fixing'],
+  applying:   ['flash', 'monitor', 'analyze', 'ai_fixing', 'apply'],
+  stable:     ['detect', 'flash', 'monitor', 'analyze', 'ai_fixing', 'apply'],
+  failed:     [],
+};
+
+function setUIState(state) {
+  // Badge
+  const badge = document.getElementById('state-badge');
+  badge.className = 'state-badge state-' + state;
+  badge.textContent = state;
+
+  // Dot
+  const dot = document.getElementById('conn-dot');
+  dot.className = 'dot ' + (state === 'idle' ? '' : state === 'stable' ? 'connected' : state === 'failed' ? 'error' : 'flashing');
+
+  // Pipeline steps
+  const done = STATE_STEP_MAP[state] || [];
+  document.querySelectorAll('.pipeline-step').forEach(el => {
+    const step = el.dataset.step;
+    el.className = 'pipeline-step';
+    if (step === state) el.classList.add('active');
+    else if (done.includes(step)) el.classList.add('done');
+  });
+
+  // Buttons
+  const active = !['idle', 'stable', 'failed'].includes(state);
+  document.getElementById('btn-stop').style.display = active ? '' : 'none';
+  document.getElementById('btn-heal').disabled = active;
+  document.getElementById('btn-flash').disabled = active;
+  document.getElementById('btn-monitor').disabled = active;
+}
+
+// Read optional metrics printed by the firmware.
+// Firmware can emit: "HIL_HEAP:42000" or "HIL_CPU0:34,CPU1:12"
+const HEAP_RE = /HIL_HEAP:(\d+)/;
+const CPU_RE  = /HIL_CPU0:(\d+)(?:,CPU1:(\d+))?/;
+
+const heapHistory = new Array(60).fill(null);
+
+function parseMetrics(text) {
+  let m;
+  if ((m = HEAP_RE.exec(text))) {
+    const kb = Math.round(parseInt(m[1]) / 1024);
+    heapHistory.push(kb);
+    heapHistory.shift();
+    updateHeapChart();
+  }
+  if ((m = CPU_RE.exec(text))) {
+    const c0 = parseInt(m[1]);
+    const c1 = m[2] ? parseInt(m[2]) : null;
+    document.getElementById('cpu0-bar').style.width = c0 + '%';
+    document.getElementById('cpu0-val').textContent = c0 + '%';
+    if (c1 !== null) {
+      document.getElementById('cpu1-bar').style.width = c1 + '%';
+      document.getElementById('cpu1-val').textContent = c1 + '%';
+    }
+  }
+}
+
+// Memory chart.
+let heapChart;
+
+function initCharts() {
+  const ctx = document.getElementById('chart-heap');
+  if (!ctx) return;
+  heapChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: heapHistory.map((_, i) => i),
+      datasets: [{
+        data: heapHistory,
+        borderColor: '#388BFD',
+        backgroundColor: 'rgba(56,139,253,0.08)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.3,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { display: false },
+        y: { display: true, grid: { color: 'rgba(255,255,255,0.04)' },
+             ticks: { color: '#8B949E', font: { size: 9 }, maxTicksLimit: 3,
+                      callback: v => v != null ? v + 'k' : '' } },
+      },
+    },
+  });
+}
+
+function updateHeapChart() {
+  if (!heapChart) return;
+  heapChart.data.datasets[0].data = [...heapHistory];
+  heapChart.update('none');
+}
+
+// Dashboard API.
+async function fetchStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    setUIState(d.state || 'idle');
+    if (d.active_board) document.getElementById('board-label').textContent = d.active_board;
+    if (d.cycle) document.getElementById('cycle-display').textContent = d.cycle + ' / ' + cycleMax;
+
+    // Populate board selector
+    const sel = document.getElementById('board-select');
+    sel.innerHTML = '';
+    (d.configured_boards || []).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.name;
+      opt.textContent = `${b.name} (${b.target})`;
+      sel.appendChild(opt);
+    });
+    if (d.active_board) sel.value = d.active_board;
+  } catch (e) {}
+}
+
+function selectedBoard() {
+  return document.getElementById('board-select')?.value || '';
+}
+
+async function triggerFlash() {
+  const r = await fetch('/api/flash', { method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ board: selectedBoard() }) });
+  const d = await r.json();
+  if (d.error) appendLog('✗ ' + d.error, 'crash');
+}
+
+async function triggerHeal() {
+  const apiKey = prompt('Anthropic API key (or set ANTHROPIC_API_KEY env var):');
+  if (apiKey === null) return;
+  const r = await fetch('/api/heal', { method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ board: selectedBoard(), api_key: apiKey || '' }) });
+  const d = await r.json();
+  if (d.error) appendLog('✗ ' + d.error, 'crash');
+}
+
+async function startMonitor() {
+  const r = await fetch('/api/monitor/start', { method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ board: selectedBoard() }) });
+  const d = await r.json();
+  if (d.error) appendLog('✗ ' + d.error, 'crash');
+}
+
+async function stopMonitor() {
+  await fetch('/api/monitor/stop', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+}
+
+// Start the page.
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  connectWS();
+});
+</script>
+</body>
+</html>
