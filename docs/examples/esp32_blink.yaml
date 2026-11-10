@@ -1,0 +1,21 @@
+# Example: Simple ESP32 blink firmware
+version: 1
+
+boards:
+  - name: esp32-blink
+    target: esp32
+    pio_env: esp32dev
+    pio_project_dir: ~/projects/esp32-blink
+    firmware_elf: .pio/build/esp32dev/firmware.elf
+    baud_rate: 115200
+    stability_window: 10
+    max_heal_cycles: 5
+    assertions:
+      - pattern: "setup complete"
+        timeout_ms: 3000
+        action: fail
+        description: "Board should print 'setup complete' within 3 seconds"
+
+dashboard_port: 3000
+ai_model: claude-3-5-sonnet-20241022
+ai_max_tokens: 4096

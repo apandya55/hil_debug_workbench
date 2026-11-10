@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #090d16; }
+      .card { fill: #111726; stroke: #1e293b; stroke-width: 1.5; rx: 12px; }
+      .card-accent { fill: #0f1c30; stroke: #2563eb; stroke-width: 1.5; rx: 12px; }
+      .card-ai { fill: #1c1427; stroke: #7c3aed; stroke-width: 1.5; rx: 12px; }
+      .card-success { fill: #061c18; stroke: #059669; stroke-width: 1.5; rx: 12px; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 700; fill: #f8fafc; }
+      .text-sub { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #94a3b8; }
+      .text-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 11px; fill: #cbd5e1; }
+      .text-dim { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 10px; fill: #64748b; }
+      .badge-amber { fill: #78350f; stroke: #d97706; stroke-width: 1; rx: 4px; }
+      .badge-emerald { fill: #064e3b; stroke: #059669; stroke-width: 1; rx: 4px; }
+      .badge-purple { fill: #3b0764; stroke: #9333ea; stroke-width: 1; rx: 4px; }
+      .arrow { stroke: #475569; stroke-width: 1.5; fill: none; stroke-dasharray: 4,4; }
+      .arrow-solid { stroke: #3b82f6; stroke-width: 2; fill: none; }
+      .arrow-return { stroke: #10b981; stroke-width: 2; fill: none; }
+      .arrow-purple { stroke: #a855f7; stroke-width: 2; fill: none; }
+    </style>
+    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#3b82f6" />
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#10b981" />
+    </marker>
+    <marker id="arr-purple" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#a855f7" />
+    </marker>
+    <marker id="arr-dim" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="920" height="440" class="bg" rx="16" />
+
+  <!-- HEADER -->
+  <text x="35" y="38" font-family="-apple-system, sans-serif" font-size="16" font-weight="700" fill="#f8fafc">HIL Debug Workbench — Autonomous Hardware Healing Loop</text>
+  <text x="35" y="58" class="text-sub">Continuous build, flash, panic backtrace resolution, and LLM source patching over USB serial</text>
+
+  <!-- NODE 1: Physical Target -->
+  <g transform="translate(35, 80)">
+    <rect width="240" height="230" class="card" />
+    <circle cx="26" cy="26" r="9" fill="#f59e0b" />
+    <text x="44" y="30" class="text-title">Microcontroller (DUT)</text>
+    <text x="20" y="52" class="text-sub">Physical Target over USB</text>
+    <line x1="20" y1="65" x2="220" y2="65" stroke="#1e293b" />
+
+    <text x="20" y="88" class="text-mono" fill="#fef08a">• ESP32 / S2 / S3 / C3</text>
+    <text x="20" y="110" class="text-mono" fill="#fef08a">• RP2040 / Pico / Pico W</text>
+    <text x="20" y="132" class="text-mono">• USB VID/PID Auto-detect</text>
+    <text x="20" y="154" class="text-mono">• 115200 Baud CDC Serial</text>
+
+    <rect x="18" y="172" width="204" height="44" fill="#1e1e2e" rx="6" />
+    <text x="26" y="190" class="text-dim">Panic Triggers:</text>
+    <text x="26" y="206" class="text-mono" font-size="10" fill="#f87171">Guru Meditation | HardFault | WDT</text>
+  </g>
+
+  <!-- Flow 1: DUT -> Serial Monitor -->
+  <path d="M 275 160 L 325 160" class="arrow-solid" marker-end="url(#arr-blue)" />
+  <text x="282" y="150" class="text-dim">Raw UART</text>
+
+  <!-- NODE 2: Serial Monitor & Crash Parser -->
+  <g transform="translate(330, 80)">
+    <rect width="250" height="230" class="card-accent" />
+    <circle cx="26" cy="26" r="9" fill="#3b82f6" />
+    <text x="44" y="30" class="text-title">Serial Crash Parser</text>
+    <text x="20" y="52" class="text-sub">hil_cli/serial_monitor.py</text>
+    <line x1="20" y1="65" x2="230" y2="65" stroke="#1e293b" />
+
+    <text x="20" y="88" class="text-mono">• Threaded buffer intake</text>
+    <text x="20" y="110" class="text-mono">• Rolling 60-line window</text>
+    <text x="20" y="132" class="text-mono">• Regex panic capture</text>
+    <text x="20" y="154" class="text-mono">• Hex address extractor</text>
+
+    <rect x="18" y="172" width="214" height="44" fill="#0b172a" rx="6" />
+    <text x="26" y="190" class="text-dim">addr2line Translation:</text>
+    <text x="26" y="206" class="text-mono" font-size="10" fill="#60a5fa">0x400d1b37 → main.cpp:42</text>
+  </g>
+
+  <!-- Flow 2: Parser -> LLM Engine -->
+  <path d="M 580 160 L 635 160" class="arrow-purple" marker-end="url(#arr-purple)" />
+  <text x="585" y="150" class="text-dim">Crash Dump</text>
+
+  <!-- NODE 3: AI Self-Healing Engine -->
+  <g transform="translate(640, 80)">
+    <rect width="245" height="230" class="card-ai" />
+    <circle cx="26" cy="26" r="9" fill="#a855f7" />
+    <text x="44" y="30" class="text-title">Claude Self-Heal</text>
+    <text x="20" y="52" class="text-sub">hil_cli/heal_loop.py</text>
+    <line x1="20" y1="65" x2="225" y2="65" stroke="#2d1b4e" />
+
+    <text x="20" y="88" class="text-mono">• Context-aware prompt</text>
+    <text x="20" y="110" class="text-mono">• Relevant source snippets</text>
+    <text x="20" y="132" class="text-mono">• Minimal bug-fix schema</text>
+    <text x="20" y="154" class="text-mono">• Verbatim code patches</text>
+
+    <rect x="18" y="172" width="209" height="44" fill="#24143a" rx="6" />
+    <text x="26" y="190" class="text-dim">Patch Validation:</text>
+    <text x="26" y="206" class="text-mono" font-size="10" fill="#c084fc">Symlink sandbox &amp; AST diff</text>
+  </g>
+
+  <!-- Return Flow: Patch -> PlatformIO Re-flash -> Physical DUT -->
+  <path d="M 760 310 L 760 370 L 155 370 L 155 315" class="arrow-return" marker-end="url(#arr-green)" />
+  <rect x="360" y="352" width="200" height="34" class="badge-emerald" />
+  <text x="375" y="374" class="text-title" font-size="12" fill="#34d399">↻ Re-flash: pio run -t upload</text>
+
+  <!-- BOTTOM BAR: UI Surfaces -->
+  <g transform="translate(35, 335)">
+    <rect width="280" height="80" class="card" />
+    <circle cx="22" cy="22" r="6" fill="#38bdf8" />
+    <text x="36" y="26" class="text-title" font-size="13">FastAPI Web Dashboard</text>
+    <text x="20" y="48" class="text-sub">http://localhost:3000 (WebSocket stream)</text>
+    <text x="20" y="66" class="text-dim">Live serial log, metrics &amp; cycle state</text>
+  </g>
+
+  <g transform="translate(605, 335)">
+    <rect width="280" height="80" class="card" />
+    <circle cx="22" cy="22" r="6" fill="#34d399" />
+    <text x="36" y="26" class="text-title" font-size="13">Textual Terminal Workbench</text>
+    <text x="20" y="48" class="text-sub">hil tui (No browser required)</text>
+    <text x="20" y="66" class="text-dim">Keyboard navigation &amp; one-touch heal</text>
+  </g>
+</svg>

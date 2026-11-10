@@ -1,0 +1,49 @@
+# Example: Multi-board setup for testing across ESP32 and RP2040
+version: 1
+
+boards:
+  - name: main-esp32
+    target: esp32
+    port: /dev/ttyUSB0
+    baud_rate: 115200
+    pio_env: esp32dev
+    pio_project_dir: ~/firmware/esp32-main
+    firmware_elf: .pio/build/esp32dev/firmware.elf
+    stability_window: 30
+    max_heal_cycles: 10
+    assertions:
+      - pattern: "WiFi connected"
+        timeout_ms: 15000
+        action: warn
+      - pattern: "MQTT ready"
+        timeout_ms: 20000
+        action: fail
+
+  - name: sensor-esp32s3
+    target: esp32s3
+    port: /dev/ttyUSB1
+    baud_rate: 921600  # ESP32-S3 native USB supports higher speeds
+    pio_env: esp32-s3-devkitc-1
+    pio_project_dir: ~/firmware/esp32s3-sensor
+    firmware_elf: .pio/build/esp32-s3-devkitc-1/firmware.elf
+    stability_window: 20
+    max_heal_cycles: 8
+
+  - name: pico-actuator
+    target: rp2040
+    port: /dev/ttyACM0
+    baud_rate: 115200
+    pio_env: pico
+    pio_project_dir: ~/firmware/rp2040-actuator
+    firmware_elf: .pio/build/pico/firmware.elf
+    stability_window: 15
+    max_heal_cycles: 6
+    assertions:
+      - pattern: "I2C initialized"
+        timeout_ms: 5000
+        action: fail
+
+dashboard_port: 3000
+ai_model: claude-3-5-sonnet-20241022
+ai_max_tokens: 8192
+log_file: /tmp/hil-multi-board-session.log
