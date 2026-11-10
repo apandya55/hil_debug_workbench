@@ -10,10 +10,10 @@
       "pattern": "^https://codecov.io"
     },
     {
-      "pattern": "^https://github.com/apandya55/hil_debug_workbench/actions"
+      "pattern": "^https://github.com/apandya55/hil_debug_workbench"
     },
     {
-      "pattern": "^https://github.com/apandya55/hil_debug_workbench/releases"
+      "pattern": "^https://www.silabs.com"
     }
   ],
   "timeout": "20s",
